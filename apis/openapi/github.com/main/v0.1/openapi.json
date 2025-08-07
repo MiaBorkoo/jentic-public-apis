@@ -7,7 +7,9 @@
     "x-jentic-source-url": "https://eqivo.org/openapi.yaml"
   },
   "security": [
-    { "bearerAuth": [] }
+    {
+      "bearerAuth": []
+    }
   ],
   "paths": {
     "/v0.1/BulkCall/": {
@@ -43,7 +45,6 @@
           {
             "basicAuth": []
           }
-          
         ]
       }
     },
@@ -3351,6 +3352,11 @@
         "scheme": "bearer",
         "bearerFormat": "token",
         "description": "GitHub personal access token. Header: Authorization: Bearer <PAT>"
+      },
+      "basicAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Authentication required (basicAuth)"
       }
     }
   },
