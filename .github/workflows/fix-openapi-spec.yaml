@@ -1,237 +1,272 @@
 name: Fix OpenAPI Specification
 
-on:
-  issues:
-    types: [opened, edited]
+  on:
+    issues:
+      types: [opened, edited]
 
-jobs:
-  fix_spec:
-    if: contains(github.event.issue.labels.*.name, 'spec-fix')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: true
-      
-      - name: Parse issue form
-        id: parse
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const body = context.payload.issue.body;
-            console.log('Issue body:', body);
-            
-            // Parse YAML form fields from GitHub issue body
-            // GitHub forms create sections like "### Field Label\n\nValue"
-            const rawUrlMatch = body.match(/### Raw URL\s*\n\n([^\n]+)/);
-            const docUrlMatch = body.match(/### Documentation URL\s*\n\n([^\n]+)/);
-            const fixContextMatch = body.match(/### Fix Context\s*\n\n([\s\S]*?)(?=\n### |$)/);
-            const errorContextMatch = body.match(/### Error Context\s*\n\n([\s\S]*?)(?=\n### |$)/);
-            
-            const rawUrl = rawUrlMatch ? rawUrlMatch[1].trim() : '';
-            const docUrl = docUrlMatch && docUrlMatch[1] !== '_No response_' ? docUrlMatch[1].trim() : '';
-            const fixContext = fixContextMatch && fixContextMatch[1] !== '_No response_' ? fixContextMatch[1].trim() : '';
-            const errorContext = errorContextMatch && errorContextMatch[1] !== '_No response_' ? errorContextMatch[1].trim() : '';
-            
-            console.log('Parsed values:', { rawUrl, docUrl, fixContext, errorContext });
-            
-            // Extract file path from raw URL for later use
-            // Example: https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/docker.com/engine/1.33/openapi.json
-            // Should extract: apis/openapi/docker.com/engine/1.33/openapi.json
-            const urlPath = rawUrl.replace('https://raw.githubusercontent.com/', '').split('/');
-            // urlPath[0] = org, urlPath[1] = repo, urlPath[2] = refs, urlPath[3] = heads, urlPath[4] = branch, urlPath[5+] = file path
-            // Handle both 'main' and 'refs/heads/main' formats
-            let startIndex = 3;
-            if (urlPath[2] === 'refs' && urlPath[3] === 'heads') {
-              startIndex = 5; // Skip org/repo/refs/heads/branch
+  jobs:
+    fix_spec:
+      if: contains(github.event.issue.labels.*.name, 'spec-fix')
+      runs-on: ubuntu-latest
+      permissions:
+        contents: write
+        issues: write
+        pull-requests: write
+
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            token: ${{ secrets.GITHUB_TOKEN }}
+            persist-credentials: true
+
+        - name: Parse issue form
+          id: parse
+          uses: actions/github-script@v7
+          with:
+            script: |
+              const body = context.payload.issue.body;
+              console.log('Issue body:', body);
+
+              // Parse YAML form fields from GitHub issue body
+              // GitHub forms create sections like "### Field Label\n\nValue"
+              const rawUrlMatch = body.match(/### Raw URL\s*\n\n([^\n]+)/);
+              const docUrlMatch = body.match(/### Documentation URL\s*\n\n([^\n]+)/);
+              const fixContextMatch = body.match(/### Fix Context\s*\n\n([\s\S]*?)(?=\n### |$)/);
+              const errorContextMatch = body.match(/### Error Context\s*\n\n([\s\S]*?)(?=\n### |$)/);
+
+              const rawUrl = rawUrlMatch ? rawUrlMatch[1].trim() : '';
+              const docUrl = docUrlMatch && docUrlMatch[1] !== '_No response_' ? docUrlMatch[1].trim() : '';
+              const fixContext = fixContextMatch && fixContextMatch[1] !== '_No response_' ? fixContextMatch[1].trim() : '';
+              const errorContext = errorContextMatch && errorContextMatch[1] !== '_No response_' ? errorContextMatch[1].trim() : '';
+
+              console.log('Parsed values:', { rawUrl, docUrl, fixContext, errorContext });
+
+              // Extract file path from raw URL for later use
+              // Example: https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/docker.com/engine/1.33/openapi.json
+              // Should extract: apis/openapi/docker.com/engine/1.33/openapi.json
+              const urlPath = rawUrl.replace('https://raw.githubusercontent.com/', '').split('/');
+              // urlPath[0] = org, urlPath[1] = repo, urlPath[2] = refs, urlPath[3] = heads, urlPath[4] = branch, urlPath[5+] = file path
+              // Handle both 'main' and 'refs/heads/main' formats
+              let startIndex = 3;
+              if (urlPath[2] === 'refs' && urlPath[3] === 'heads') {
+                startIndex = 5; // Skip org/repo/refs/heads/branch
+              }
+              const filePath = urlPath.slice(startIndex).join('/'); // Remove org/repo/branch parts
+
+              core.setOutput('raw_url', rawUrl);
+              core.setOutput('doc_url', docUrl);
+              core.setOutput('fix_context', fixContext);
+              core.setOutput('error_context', errorContext);
+              core.setOutput('file_path', filePath);
+
+        - name: Validate inputs
+          run: |
+            if [ -z "${{ steps.parse.outputs.raw_url }}" ]; then
+              echo "Error: Raw URL is required"
+              exit 1
+            fi
+            if [[ "${{ steps.parse.outputs.raw_url }}" != https://raw.githubusercontent.com/* ]]; then
+              echo "Error: URL must be a raw GitHub URL"
+              exit 1
+            fi
+            if [[ "${{ steps.parse.outputs.raw_url }}" == *.yaml ]] || [[ "${{ steps.parse.outputs.raw_url }}" == *.yml ]]; then
+              echo "Error: Only JSON format OpenAPI specifications are supported. YAML format is not supported."
+              exit 1
+            fi
+
+        - name: Call OpenAPI Repair API
+          id: api_call
+          run: |
+            # Create API request payload with all fields
+            cat > request.json << EOF
+            {
+              "url": "${{ steps.parse.outputs.raw_url }}",
+              "doc_url": "${{ steps.parse.outputs.doc_url }}",
+              "fix_context": "${{ steps.parse.outputs.fix_context }}",
+              "error_context": "${{ steps.parse.outputs.error_context }}"
             }
-            const filePath = urlPath.slice(startIndex).join('/'); // Remove org/repo/branch parts
-            
-            core.setOutput('raw_url', rawUrl);
-            core.setOutput('doc_url', docUrl);
-            core.setOutput('fix_context', fixContext);
-            core.setOutput('error_context', errorContext);
-            core.setOutput('file_path', filePath);
-      
-      - name: Validate inputs
-        run: |
-          if [ -z "${{ steps.parse.outputs.raw_url }}" ]; then
-            echo "Error: Raw URL is required"
-            exit 1
-          fi
-          if [[ "${{ steps.parse.outputs.raw_url }}" != https://raw.githubusercontent.com/* ]]; then
-            echo "Error: URL must be a raw GitHub URL"
-            exit 1
-          fi
-          if [[ "${{ steps.parse.outputs.raw_url }}" == *.yaml ]] || [[ "${{ steps.parse.outputs.raw_url }}" == *.yml ]]; then
-            echo "Error: Only JSON format OpenAPI specifications are supported. YAML format is not supported."
-            exit 1
-          fi
-      
-      - name: Call OpenAPI Repair API
-        id: api_call
-        run: |
-          # Create API request payload with all fields
-          cat > request.json << EOF
-          {
-            "url": "${{ steps.parse.outputs.raw_url }}",
-            "doc_url": "${{ steps.parse.outputs.doc_url }}",
-            "fix_context": "${{ steps.parse.outputs.fix_context }}",
-            "error_context": "${{ steps.parse.outputs.error_context }}"
-          }
-          EOF
-          
-          # Call the API
-          response=$(curl -s -X POST "http://ec2-13-220-112-49.compute-1.amazonaws.com:8000/fix-url-spec" \
-            -H "Content-Type: application/json" \
-            -d @request.json)
-          
-          # Save full response for debugging
-          echo "$response" > api_response.json
-          
-          # Check if API call was successful
-          success=$(echo "$response" | jq -r '.success // false')
-          if [ "$success" != "true" ]; then
-            echo "API call failed:"
-            echo "$response" | jq -r '.message // "Unknown error"'
-            exit 1
-          fi
-          
-          # Use Python with ensure_ascii=True to preserve Unicode escaping
-          echo "$response" | python3 -c 'import json; import sys; response = json.load(sys.stdin); json.dump(response.get("fixed_spec"), open("${{ steps.parse.outputs.file_path }}", "w"), indent=2, ensure_ascii=True) if response.get("fixed_spec") else None; json.dump(response.get("feedback"), open("feedback.json", "w"), indent=2, ensure_ascii=True) if response.get("feedback") else None'
-          
-          # Fix the repaired_file field in feedback.json to use actual file path instead of temp name
-          if [ -f feedback.json ]; then
-            # Use the full file path instead of just the filename
-            actual_file_path="${{ steps.parse.outputs.file_path }}"
-            # Replace any temporary filename with the actual file path in feedback.json (handle array structure)
-            jq --arg filepath "$actual_file_path" 'map(.repaired_file = $filepath)' feedback.json > feedback_temp.json && mv feedback_temp.json feedback.json
-          fi
-          
-          # Log what was saved
-          echo "Fixed spec saved to: ${{ steps.parse.outputs.file_path }}"
-          echo "Feedback saved to: feedback.json"
-          
-          # Clean up temporary files before committing
-          rm -f request.json api_response.json
-          
-          echo "api_success=true" >> $GITHUB_OUTPUT
-      
-      - name: Create PR with changes
-        id: create_pr
-        if: steps.api_call.outputs.api_success == 'true'
-        run: |
-          # Configure git
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          
-          # Create a new branch for the fix
-          BRANCH_NAME="fix-spec-issue-${{ github.event.issue.number }}"
-          git checkout -b "$BRANCH_NAME"
-          
-          # Stage all changes
-          git add .
-          
-          # Commit changes (only if there are staged changes)
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            echo "pr_created=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          git commit -m "Fix OpenAPI spec from issue #${{ github.event.issue.number }}" \
-            -m "- Fixed issues in OpenAPI specification" \
-            -m "- URL: ${{ steps.parse.outputs.raw_url }}" \
-            -m "- Doc URL: ${{ steps.parse.outputs.doc_url }}" \
-            -m "- Fix Context: ${{ steps.parse.outputs.fix_context }}" \
-            -m "- Error Context: ${{ steps.parse.outputs.error_context }}" \
-            -m "" \
-            -m "Resolves #${{ github.event.issue.number }}"
-          
-          # Push the new branch
-          git push origin "$BRANCH_NAME"
-          
-          # Create PR body
-          cat > pr_body.md << 'EOF'
-          ## 🔧 OpenAPI Specification Fix
-          
-          This PR automatically fixes the OpenAPI specification from issue #${{ github.event.issue.number }}.
-          
-          ### 📋 Details
-          - **Source URL**: ${{ steps.parse.outputs.raw_url }}
-          - **Documentation**: ${{ steps.parse.outputs.doc_url || 'Not provided' }}
-          - **Fix Context**: ${{ steps.parse.outputs.fix_context || 'Not provided' }}
-          - **Error Context**: ${{ steps.parse.outputs.error_context || 'Not provided' }}
-          
-          ### 🤖 Changes Made
-          - Applied automated fixes to the OpenAPI specification
-          - Replaced original spec file with corrected version
-          - Added feedback.json documenting all repairs
-          
-          ### ✅ Ready for Review
-          This PR is ready for review and merging. All changes were generated by the OpenAPI-Repair service.
-          
-          Closes #${{ github.event.issue.number }}
-          EOF
-          
-          # Create PR using GitHub CLI
-          gh pr create \
-            --title "Fix OpenAPI spec from issue #${{ github.event.issue.number }}" \
-            --body-file pr_body.md \
-            --head "$BRANCH_NAME" \
-            --base main \
-            --label "automated-fix,spec-fix"
-          
-          echo "pr_created=true" >> $GITHUB_OUTPUT
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Comment on issue
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const apiSuccess = '${{ steps.api_call.outputs.api_success }}' === 'true';
-            const prCreated = '${{ steps.create_pr.outputs.pr_created }}' === 'true';
-            const emoji = apiSuccess ? '✅' : '❌';
-            const status = apiSuccess ? 'completed successfully' : 'failed';
+            EOF
 
-            const rawUrl = ${{ toJSON(steps.parse.outputs.raw_url) }};
-            const docUrl = ${{ toJSON(steps.parse.outputs.doc_url) }} || 'None provided';
-            const fixContext = ${{ toJSON(steps.parse.outputs.fix_context) }} || 'None provided';
-            const errorContext = ${{ toJSON(steps.parse.outputs.error_context) }} || 'None provided';
+            # Call the API
+            response=$(curl -s -X POST "http://ec2-13-220-112-49.compute-1.amazonaws.com:8000/fix-url-spec" \
+              -H "Content-Type: application/json" \
+              -d @request.json)
 
-            let resultMessage = '';
-            if (apiSuccess && prCreated) {
-              resultMessage = 'The specification has been processed and fixed. A pull request has been created with the changes.';
-            } else if (apiSuccess && !prCreated) {
-              resultMessage = 'The specification was processed but no changes were needed.';
-            } else {
-              resultMessage = 'There was an error processing the specification. Please check the workflow logs for details.';
-            }
+            # Save full response for debugging
+            echo "$response" > api_response.json
 
-            const comment = `${emoji} OpenAPI specification fix ${status}!
+            # Check if API call was successful
+            success=$(echo "$response" | jq -r '.success // false')
+            if [ "$success" != "true" ]; then
+              echo "API call failed:"
+              echo "$response" | jq -r '.message // "Unknown error"'
+              exit 1
+            fi
 
-            **Processed URL:** ${rawUrl}
-            **Documentation URL:** ${docUrl}
-            **Fix Context:** ${fixContext}
-            **Error Context:** ${errorContext}
+            # Extract repair details if present (for when no fixes applied)
+            repair_details=$(echo "$response" | jq -r '.repair_details // empty')
+            if [ ! -z "$repair_details" ]; then
+              echo "repair_details=$repair_details" >> $GITHUB_OUTPUT
+            fi
 
-            ${resultMessage}
+            # Use Python with ensure_ascii=True to preserve Unicode escaping
+            echo "$response" | python3 -c 'import json; import sys; response = json.load(sys.stdin); json.dump(response.get("fixed_spec"), open("${{ 
+  steps.parse.outputs.file_path }}", "w"), indent=2, ensure_ascii=True) if response.get("fixed_spec") else None; json.dump(response.get("feedback"), 
+  open("feedback.json", "w"), indent=2, ensure_ascii=True) if response.get("feedback") else None'
 
-            ---
-            *This comment was automatically generated by the OpenAPI Fix workflow.*`;
+            # Fix the repaired_file field in feedback.json to use actual file path instead of temp name
+            if [ -f feedback.json ]; then
+              # Use the full file path instead of just the filename
+              actual_file_path="${{ steps.parse.outputs.file_path }}"
+              # Replace any temporary filename with the actual file path in feedback.json (handle array structure)
+              jq --arg filepath "$actual_file_path" 'map(.repaired_file = $filepath)' feedback.json > feedback_temp.json && mv feedback_temp.json feedback.json
+            fi
 
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+            # Log what was saved
+            echo "Fixed spec saved to: ${{ steps.parse.outputs.file_path }}"
+            echo "Feedback saved to: feedback.json"
+
+            # Clean up temporary files before committing
+            rm -f request.json api_response.json
+
+            echo "api_success=true" >> $GITHUB_OUTPUT
+
+        - name: Create PR with changes
+          id: create_pr
+          if: steps.api_call.outputs.api_success == 'true'
+          run: |
+            # Configure git
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+
+            # Create a new branch for the fix
+            BRANCH_NAME="fix-spec-issue-${{ github.event.issue.number }}"
+            git checkout -b "$BRANCH_NAME"
+
+            # Stage all changes
+            git add .
+
+            # Commit changes (only if there are staged changes)
+            if git diff --cached --quiet; then
+              echo "No changes to commit"
+              echo "pr_created=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            git commit -m "Fix OpenAPI spec from issue #${{ github.event.issue.number }}" \
+              -m "- Fixed issues in OpenAPI specification" \
+              -m "- URL: ${{ steps.parse.outputs.raw_url }}" \
+              -m "- Doc URL: ${{ steps.parse.outputs.doc_url }}" \
+              -m "- Fix Context: ${{ steps.parse.outputs.fix_context }}" \
+              -m "- Error Context: ${{ steps.parse.outputs.error_context }}" \
+              -m "" \
+              -m "Resolves #${{ github.event.issue.number }}"
+
+            # Push the new branch
+            git push origin "$BRANCH_NAME"
+
+            # Create PR body
+            cat > pr_body.md << 'EOF'
+            ## 🔧 OpenAPI Specification Fix
+
+            This PR automatically fixes the OpenAPI specification from issue #${{ github.event.issue.number }}.
+
+            ### 📋 Details
+            - **Source URL**: ${{ steps.parse.outputs.raw_url }}
+            - **Documentation**: ${{ steps.parse.outputs.doc_url || 'Not provided' }}
+            - **Fix Context**: ${{ steps.parse.outputs.fix_context || 'Not provided' }}
+            - **Error Context**: ${{ steps.parse.outputs.error_context || 'Not provided' }}
+
+            ### 🤖 Changes Made
+            - Applied automated fixes to the OpenAPI specification
+            - Replaced original spec file with corrected version
+            - Added feedback.json documenting all repairs
+
+            ### ✅ Ready for Review
+            This PR is ready for review and merging. All changes were generated by the OpenAPI-Repair service.
+
+            Closes #${{ github.event.issue.number }}
+            EOF
+
+            # Create PR using GitHub CLI
+            gh pr create \
+              --title "Fix OpenAPI spec from issue #${{ github.event.issue.number }}" \
+              --body-file pr_body.md \
+              --head "$BRANCH_NAME" \
+              --base main \
+              --label "automated-fix,spec-fix"
+
+            echo "pr_created=true" >> $GITHUB_OUTPUT
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        - name: Comment on issue
+          if: always()
+          uses: actions/github-script@v7
+          with:
+            script: |
+              const apiSuccess = '${{ steps.api_call.outputs.api_success }}' === 'true';
+              const prCreated = '${{ steps.create_pr.outputs.pr_created }}' === 'true';
+              const repairDetails = '${{ steps.api_call.outputs.repair_details }}';
+
+              let emoji, title;
+              if (!apiSuccess) {
+                emoji = '❌';
+                title = 'OpenAPI specification fix failed';
+              } else if (prCreated) {
+                emoji = '✅';
+                title = 'OpenAPI specification fix completed successfully';
+              } else {
+                emoji = '✅';
+                title = 'OpenAPI specification analysis completed - no fixes needed';
+              }
+
+              const rawUrl = ${{ toJSON(steps.parse.outputs.raw_url) }};
+              const docUrl = ${{ toJSON(steps.parse.outputs.doc_url) }} || 'None provided';
+              const fixContext = ${{ toJSON(steps.parse.outputs.fix_context) }} || 'None provided';
+              const errorContext = ${{ toJSON(steps.parse.outputs.error_context) }} || 'None provided';
+
+              let resultMessage = '';
+              let repairSection = '';
+
+              if (apiSuccess && prCreated) {
+                resultMessage = 'The specification has been analyzed and fixed. A pull request has been created with the changes.';
+              } else if (apiSuccess && !prCreated) {
+                resultMessage = 'The specification was processed but no changes were needed.';
+
+                // Add repair details only when no changes were made
+                if (repairDetails) {
+                  try {
+                    const repairs = JSON.parse(repairDetails);
+                    repairSection = '\n**Analysis Results:**\n';
+                    repairs.forEach(repair => {
+                      repairSection += `- **${repair.type}**: ${repair.action}\n`;
+                    });
+                    repairSection += '\n';
+                  } catch (e) {
+                    console.log('Failed to parse repair details:', e);
+                  }
+                }
+              } else {
+                resultMessage = 'There was an error processing the specification. Please check the workflow logs for details.';
+              }
+
+              const comment = `${emoji} ${title}!
+
+              **Processed URL:** ${rawUrl}
+              **Documentation URL:** ${docUrl}
+              **Fix Context:** ${fixContext}
+              **Error Context:** ${errorContext}
+              ${repairSection}
+              ${resultMessage}
+
+              ---
+              *This comment was automatically generated by the OpenAPI Fix workflow.*`;
+
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
