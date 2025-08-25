@@ -189,66 +189,65 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const apiSuccess = '${{ steps.api_call.outputs.api_success }}' === 'true';
-            const prCreated = '${{ steps.create_pr.outputs.pr_created }}' === 'true';
-            const repairDetails = ${{ toJSON(steps.api_call.outputs.repair_details) }};
+              const apiSuccess = '${{ steps.api_call.outputs.api_success }}' === 'true';
+              const prCreated = '${{ steps.create_pr.outputs.pr_created }}' === 'true';
+              const repairDetails = ${{ toJSON(steps.api_call.outputs.repair_details) }};
+              const hasRepairDetails = repairDetails && repairDetails.length > 0;
 
-            let emoji, title;
-            if (!apiSuccess) {
-              emoji = '❌';
-              title = 'OpenAPI specification fix failed';
-            } else if (prCreated) {
-              emoji = '✅';
-              title = 'OpenAPI specification fix completed successfully';
-            } else {
-              emoji = '✅';
-              title = 'OpenAPI specification analysis completed - no fixes needed';
-            }
+              let emoji, title;
+              if (apiSuccess && prCreated) {
+                emoji = '✅';
+                title = 'OpenAPI specification fix completed successfully';
+              } else if (apiSuccess && !prCreated) {
+                emoji = '✅';
+                title = 'OpenAPI specification analysis completed - no fixes needed';
+              } else if (!apiSuccess && hasRepairDetails) {
+                emoji = '✅';
+                title = 'OpenAPI specification analysis completed - no fixes needed';
+              } else {
+                emoji = '❌';
+                title = 'OpenAPI specification fix failed';
+              }
 
-            const rawUrl = ${{ toJSON(steps.parse.outputs.raw_url) }};
-            const docUrl = ${{ toJSON(steps.parse.outputs.doc_url) }} || 'None provided';
-            const fixContext = ${{ toJSON(steps.parse.outputs.fix_context) }} || 'None provided';
-            const errorContext = ${{ toJSON(steps.parse.outputs.error_context) }} || 'None provided';
+              const rawUrl = ${{ toJSON(steps.parse.outputs.raw_url) }};
+              const docUrl = ${{ toJSON(steps.parse.outputs.doc_url) }} || 'None provided';
+              const fixContext = ${{ toJSON(steps.parse.outputs.fix_context) }} || 'None provided';
+              const errorContext = ${{ toJSON(steps.parse.outputs.error_context) }} || 'None provided';
 
-            let resultMessage = '';
-            let repairSection = '';
+              let resultMessage = '';
+              let repairSection = '';
 
-            if (apiSuccess && prCreated) {
-              resultMessage = 'The specification has been analyzed and fixed. A pull request has been created with the changes.';
-            } else if (apiSuccess && !prCreated) {
-              resultMessage = 'The specification was processed but no changes were needed.';
+              if (apiSuccess && prCreated) {
+                resultMessage = 'The specification has been analyzed and fixed. A pull request has been created with the changes.';
+              } else if ((apiSuccess && !prCreated) || (!apiSuccess && hasRepairDetails)) {
+                resultMessage = 'The specification was processed but no changes were needed.';
 
-              if (repairDetails) {
-                try {
-                  const repairs = JSON.parse(repairDetails);
+                if (hasRepairDetails) {
                   repairSection = '\n**Analysis Results:**\n';
-                  repairs.forEach(repair => {
+                  repairDetails.forEach(repair => {
                     repairSection += `- **${repair.type}**: ${repair.action}\n`;
                   });
                   repairSection += '\n';
-                } catch (e) {
-                  console.log('Failed to parse repair details:', e);
                 }
+              } else {
+                resultMessage = 'There was an error processing the specification. Please check the workflow logs for details.';
               }
-            } else {
-              resultMessage = 'There was an error processing the specification. Please check the workflow logs for details.';
-            }
 
-            const comment = `${emoji} ${title}!
+              const comment = `${emoji} ${title}!
 
-            **Processed URL:** ${rawUrl}
-            **Documentation URL:** ${docUrl}
-            **Fix Context:** ${fixContext}
-            **Error Context:** ${errorContext}
-            ${repairSection}
-            ${resultMessage}
+              **Processed URL:** ${rawUrl}
+              **Documentation URL:** ${docUrl}
+              **Fix Context:** ${fixContext}
+              **Error Context:** ${errorContext}
+              ${repairSection}
+              ${resultMessage}
 
-            ---
-            *This comment was automatically generated by the OpenAPI Fix workflow.*`;
+              ---
+              *This comment was automatically generated by the OpenAPI Fix workflow.*`;
 
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
