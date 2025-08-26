@@ -23225,27 +23225,30 @@
       }
     },
     "/views.open": {
-      "get": {
-        "parameters": [
-          {
-            "description": "Exchange a trigger to post to the user.",
-            "in": "query",
-            "name": "trigger_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "A [view payload](/reference/surfaces/views). This must be a JSON-encoded string.",
-            "in": "query",
-            "name": "view",
-            "required": true,
-            "schema": {
-              "type": "string"
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "trigger_id": {
+                    "type": "string",
+                    "description": "Exchange a trigger to post to the user."
+                  },
+                  "view": {
+                    "type": "object",
+                    "description": "A view payload."
+                  }
+                },
+                "required": [
+                  "trigger_id",
+                  "view"
+                ]
+              }
             }
           }
-        ],
+        },
         "responses": {
           "200": {
             "content": {
@@ -23363,40 +23366,39 @@
           "description": "API method documentation",
           "url": "https://api.slack.com/methods/views.open"
         },
-        "description": "Open a view for a user.",
+        "description": "HTTP POST with JSON body. Open a view for a user.",
         "operationId": "views_open"
       }
     },
     "/views.publish": {
-      "get": {
-        "parameters": [
-          {
-            "description": "`id` of the user you want publish a view to.",
-            "in": "query",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "A [view payload](/reference/surfaces/views). This must be a JSON-encoded string.",
-            "in": "query",
-            "name": "view",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "A string that represents view state to protect against possible race conditions.",
-            "in": "query",
-            "name": "hash",
-            "schema": {
-              "type": "string"
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string",
+                    "description": "id of the user you want publish a view to."
+                  },
+                  "view": {
+                    "type": "object",
+                    "description": "A view payload."
+                  },
+                  "hash": {
+                    "type": "string",
+                    "description": "A string that represents view state to protect against possible race conditions."
+                  }
+                },
+                "required": [
+                  "user_id",
+                  "view"
+                ]
+              }
             }
           }
-        ],
+        },
         "responses": {
           "200": {
             "content": {
@@ -23504,7 +23506,7 @@
           "description": "API method documentation",
           "url": "https://api.slack.com/methods/views.publish"
         },
-        "description": "Publish a static view for a User.",
+        "description": "HTTP POST with JSON body. Publish a static view for a User.",
         "operationId": "views_publish"
       }
     },
@@ -23658,41 +23660,59 @@
       }
     },
     "/views.update": {
-      "get": {
-        "parameters": [
-          {
-            "description": "A unique identifier of the view to be updated. Either `view_id` or `external_id` is required.",
-            "in": "query",
-            "name": "view_id",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "A unique identifier of the view set by the developer. Must be unique for all views on a team. Max length of 255 characters. Either `view_id` or `external_id` is required.",
-            "in": "query",
-            "name": "external_id",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "A [view object](/reference/surfaces/views). This must be a JSON-encoded string.",
-            "in": "query",
-            "name": "view",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "A string that represents view state to protect against possible race conditions.",
-            "in": "query",
-            "name": "hash",
-            "schema": {
-              "type": "string"
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "view_id": {
+                        "type": "string",
+                        "description": "A unique identifier of the view to be updated."
+                      },
+                      "view": {
+                        "type": "object",
+                        "description": "A view object."
+                      },
+                      "hash": {
+                        "type": "string",
+                        "description": "A string that represents view state to protect against possible race conditions."
+                      }
+                    },
+                    "required": [
+                      "view_id",
+                      "view"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "external_id": {
+                        "type": "string",
+                        "description": "A unique identifier of the view set by the developer. Must be unique for all views on a team. Max length of 255 characters."
+                      },
+                      "view": {
+                        "type": "object",
+                        "description": "A view object."
+                      },
+                      "hash": {
+                        "type": "string",
+                        "description": "A string that represents view state to protect against possible race conditions."
+                      }
+                    },
+                    "required": [
+                      "external_id",
+                      "view"
+                    ]
+                  }
+                ]
+              }
             }
           }
-        ],
+        },
         "responses": {
           "200": {
             "content": {
@@ -23812,7 +23832,7 @@
           "description": "API method documentation",
           "url": "https://api.slack.com/methods/views.update"
         },
-        "description": "Update an existing view.",
+        "description": "HTTP POST with JSON body. Update an existing view.",
         "operationId": "views_update"
       }
     },
