@@ -16140,6 +16140,100 @@
         },
         "description": "Exchanges a temporary OAuth verifier code for an access token.",
         "operationId": "oauth_v2_access"
+      },
+      "post": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "ok": {
+                      "$ref": "#/components/schemas/defs_ok_true"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful token request with scopes for both a bot user and a user token"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "ok": {
+                      "$ref": "#/components/schemas/defs_ok_false"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Typical error response"
+          }
+        },
+        "security": [
+          {
+            "slackAuth": []
+          }
+        ],
+        "tags": [
+          "oauth.v2",
+          "oauth"
+        ],
+        "externalDocs": {
+          "description": "API method documentation",
+          "url": "https://api.slack.com/methods/oauth.v2.access"
+        },
+        "description": "Exchanges a temporary OAuth verifier code for an access token.",
+        "operationId": "oauth_v2_access_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "client_id": {
+                    "type": "string",
+                    "description": "Issued when you created your application."
+                  },
+                  "client_secret": {
+                    "type": "string",
+                    "description": "Issued when you created your application."
+                  },
+                  "code": {
+                    "type": "string",
+                    "description": "The code param returned via the OAuth callback."
+                  },
+                  "redirect_uri": {
+                    "type": "string",
+                    "description": "Must match the originally submitted URI (if one was sent)."
+                  },
+                  "grant_type": {
+                    "type": "string",
+                    "description": "Optional grant_type; used for refresh in token rotation."
+                  }
+                },
+                "required": [
+                  "client_id",
+                  "client_secret",
+                  "code"
+                ]
+              }
+            }
+          }
+        }
       }
     },
     "/pins.add": {
@@ -26996,7 +27090,7 @@
       "slackAuth": {
         "flows": {
           "authorizationCode": {
-            "authorizationUrl": "https://slack.com/oauth/authorize",
+            "authorizationUrl": "https://slack.com/oauth/v2/authorize",
             "scopes": {
               "admin": "admin",
               "admin.apps:read": "admin.apps:read",
@@ -27054,7 +27148,7 @@
               "users:read.email": "users:read.email",
               "users:write": "users:write"
             },
-            "tokenUrl": "https://slack.com/api/oauth.access"
+            "tokenUrl": "https://slack.com/api/oauth.v2.access"
           }
         },
         "type": "oauth2"
