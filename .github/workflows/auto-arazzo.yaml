@@ -22,11 +22,8 @@ jobs:
         run: |
           echo "Parsing OpenAPI URL and details from issue..."
           BODY="${{ github.event.issue.body }}"
-          # Try YAML form format first, then fallback to markdown format
-          URL=$(echo "$BODY" | grep -A 1 "### OpenAPI Specification URL" | tail -n 1 | xargs)
-          if [ -z "$URL" ] || [ "$URL" = "_No response_" ]; then
-            URL=$(echo "$BODY" | grep -oP '(?<=openapi_url:).*' | head -n 1 | xargs)
-          fi
+          # Extract URL from GitHub issue form 
+          URL=$(echo "$BODY" | grep -A 2 "### OpenAPI Specification URL" | tail -n 1 | xargs)
           # Attempt to extract vendor and api_name from URL structure
           # Example: .../apis/openapi/vendor.com/api_name/version/openapi.json
           VENDOR_NAME=$(echo "$URL" | grep -oP '(?<=apis/openapi/)[^/]+' | head -n 1)
@@ -35,11 +32,7 @@ jobs:
           API_VERSION=$(echo "$URL" | grep -oP '[^/]+(?=/openapi\.json)' | head -n 1)
 
           # Extract Workflow Descriptions section as a JSON array
-          # Try YAML form format first, then fallback to markdown format
           WORKFLOW_DESCRIPTIONS=$(echo "$BODY" | awk '/^### Request Workflow Descriptions/{flag=1;next}/^## |^### /{if(flag)flag=0}flag' | grep -E '^[-*] ' | sed -E 's/^[-*] *//' | jq -R . | jq -sc .)
-          if [ -z "$WORKFLOW_DESCRIPTIONS" ] || [ "$WORKFLOW_DESCRIPTIONS" = "[]" ]; then
-            WORKFLOW_DESCRIPTIONS=$(echo "$BODY" | awk '/^### Workflow Descriptions \(Optional\)/{flag=1;next}/^## |^### /{if(flag)flag=0}flag' | grep -E '^[-*] ' | sed -E 's/^[-*] *//' | jq -R . | jq -sc .)
-          fi
 
           if [ -z "$URL" ]; then
             echo "::error::Could not extract openapi_url from issue body."

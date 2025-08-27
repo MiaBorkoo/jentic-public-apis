@@ -12,7 +12,7 @@ jobs:
     permissions:
       contents: write        # To push the new branch and commit files
       pull-requests: write   # To create the pull request
-      issues: write          # To comment on the issue 
+      issues: write          # To comment on the issue (if needed)
 
     steps:
       - name: Check out the repository
@@ -27,11 +27,8 @@ jobs:
           BODY="${{ github.event.issue.body }}"
           BODY=$(echo "$BODY" | tr -d '\r')
 
-          # Extract URL - try YAML form format first, then fallback to markdown
-          URL=$(echo "$BODY" | grep -A 1 "### OpenAPI Specification URL" | tail -n 1 | xargs)
-          if [ -z "$URL" ] || [ "$URL" = "_No response_" ]; then
-            URL=$(echo "$BODY" | grep -oP '(?<=import_oas_url:).*' | head -n 1 | xargs)
-          fi
+          # Extract URL from GitHub issue form 
+          URL=$(echo "$BODY" | grep -A 2 "### OpenAPI Specification URL" | tail -n 1 | xargs)
           echo "URL after grep/xargs: $URL"
           if [ -z "$URL" ]; then
             echo "::error::Could not extract required OpenAPI URL from issue body."
@@ -40,11 +37,8 @@ jobs:
             exit 1
           fi
 
-          # Extract Vendor Name - try YAML form format first, then fallback to markdown
-          VENDOR_NAME=$(echo "$BODY" | grep -A 1 "### Vendor Name (Required)" | tail -n 1 | xargs)
-          if [ -z "$VENDOR_NAME" ] || [ "$VENDOR_NAME" = "_No response_" ]; then
-            VENDOR_NAME=$(echo "$BODY" | grep -oP '(?<=vendor_name:).*' | head -n 1 | xargs)
-          fi
+          # Extract Vendor Name from GitHub issue form 
+          VENDOR_NAME=$(echo "$BODY" | grep -A 2 "### Vendor Name (Required)" | tail -n 1 | xargs)
           echo "Vendor Name after grep/xargs: $VENDOR_NAME"
           if [ -z "$VENDOR_NAME" ]; then
             echo "::error::Could not extract required vendor name from issue body."
