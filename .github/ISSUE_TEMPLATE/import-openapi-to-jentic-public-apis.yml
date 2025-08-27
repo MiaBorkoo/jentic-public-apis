@@ -1,0 +1,41 @@
+name: Import OpenAPI to Jentic Public APIs
+description: Request import of OpenAPI spec to Jentic Public APIs from an OpenAPI URL.
+title: "[AUTO] Import OpenAPI to Jentic Public APIs: "
+labels: [openapi-import]
+body:
+  - type: input
+    id: import_oas_url
+    attributes:
+      label: OpenAPI Specification URL
+      description: |
+        REQUIRED: Please provide the RAW URL to the OpenAPI specification (.json or .yaml file).
+        The workflow will download this URL, unzip the contents into the repository, and create a PR.
+
+        For GitHub repositories:
+        - CORRECT: https://raw.githubusercontent.com/.../openapi.json
+        - INCORRECT: https://github.com/.../blob/.../openapi.json
+
+        The URL should point directly to the spec file, not a web page.
+      placeholder: "https://raw.githubusercontent.com/.../openapi.json"
+    validations:
+      required: true
+
+  - type: input
+    id: vendor_name
+    attributes:
+      label: Vendor Name (Required)
+      description: |
+        REQUIRED: Provide the vendor name (e.g., github.com, stripe.com).
+        The workflow will place the *contents* of this directory under 'apis/openapi/vendor_name/'.
+      placeholder: "github.com"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: Additional Information
+      description: "Optional: Add any additional context about this API that might be helpful"
+      placeholder: "Any additional context about this API that might be helpful..."
+    validations:
+      required: false
