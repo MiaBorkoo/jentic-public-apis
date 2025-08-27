@@ -8537,6 +8537,34 @@
                 "type": "object"
               }
             }
+          ,
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "description": "Channel, private group, or IM channel to send message to."
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "Optional when blocks are provided."
+                  },
+                  "blocks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": { "type": "string" }
+                      },
+                      "required": ["type"],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "required": ["channel"]
+              }
+            }
           }
         }
       }
@@ -8742,6 +8770,34 @@
                   }
                 },
                 "type": "object"
+              }
+            }
+          ,
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "description": "Channel, private group, or IM channel to send message to."
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "Optional when blocks are provided."
+                  },
+                  "blocks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": { "type": "string" }
+                      },
+                      "required": ["type"],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "required": ["channel"]
               }
             }
           }
@@ -9554,6 +9610,38 @@
                   }
                 },
                 "type": "object"
+              }
+            }
+          ,
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "description": "Channel containing the message to be updated."
+                  },
+                  "ts": {
+                    "type": "string",
+                    "description": "Timestamp of the message to be updated."
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "Optional when blocks are provided."
+                  },
+                  "blocks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": { "type": "string" }
+                      },
+                      "required": ["type"],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "required": ["channel", "ts"]
               }
             }
           }
