@@ -1,0 +1,281 @@
+{
+  "arazzo": "1.0.1",
+  "info": {
+    "title": "Jentic Generated Arazzo Specification",
+    "version": "1.0.0",
+    "description": "Automatically generated Arazzo specification from OpenAPI"
+  },
+  "sourceDescriptions": [
+    {
+      "name": "openapi_source",
+      "url": "https://raw.githubusercontent.com/docusign/OpenAPI-Specifications/refs/heads/master/maestro.rest.swagger-v1.0.0.json",
+      "type": "openapi"
+    }
+  ],
+  "workflows": [
+    {
+      "workflowId": "workflow-triggering",
+      "summary": "This workflow allows a user to trigger a specific Maestro workflow. It first retrieves the trigger requirements for the workflow, then uses those requirements to trigger the workflow with the appropriate input data.",
+      "description": "This workflow allows a user to trigger a specific Maestro workflow. It first retrieves the trigger requirements for the workflow, then uses those requirements to trigger the workflow with the appropriate input data.",
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "workflowId": {
+            "type": "string"
+          },
+          "instance_name": {
+            "type": "string"
+          },
+          "trigger_inputs": {
+            "type": "string"
+          }
+        }
+      },
+      "steps": [
+        {
+          "stepId": "get-workflow-trigger-requirements",
+          "description": "Retrieves the trigger requirements for a specific workflow, including the input schema.",
+          "operationId": "GetWorkflowTriggerRequirements",
+          "parameters": [
+            {
+              "name": "workflowId",
+              "in": "path",
+              "value": "$inputs.workflowId"
+            }
+          ],
+          "successCriteria": [
+            {
+              "condition": "$statusCode == 200"
+            }
+          ],
+          "outputs": {
+            "trigger_id": "$response.body#/trigger_id",
+            "trigger_event_type": "$response.body#/trigger_event_type",
+            "trigger_http_config": "$response.body#/trigger_http_config",
+            "trigger_input_schema": "$response.body#/trigger_input_schema",
+            "metadata": "$response.body#/metadata"
+          }
+        },
+        {
+          "stepId": "trigger-workflow",
+          "description": "Triggers a new instance of the specified workflow using the retrieved trigger requirements and provided input data.",
+          "operationId": "TriggerWorkflow",
+          "parameters": [
+            {
+              "name": "workflowId",
+              "in": "path",
+              "value": "$inputs.workflowId"
+            }
+          ],
+          "requestBody": {
+            "contentType": "application/json",
+            "payload": {
+              "instance_name": "$inputs.instance_name",
+              "trigger_inputs": "$inputs.trigger_inputs"
+            }
+          },
+          "successCriteria": [
+            {
+              "condition": "$statusCode == 200"
+            }
+          ],
+          "outputs": {
+            "instance_id": "$response.body#/instance_id",
+            "instance_url": "$response.body#/instance_url"
+          }
+        }
+      ],
+      "outputs": {
+        "trigger_id": "$steps.get-workflow-trigger-requirements.outputs.trigger_id",
+        "trigger_event_type": "$steps.get-workflow-trigger-requirements.outputs.trigger_event_type",
+        "trigger_http_config": "$steps.get-workflow-trigger-requirements.outputs.trigger_http_config",
+        "trigger_input_schema": "$steps.get-workflow-trigger-requirements.outputs.trigger_input_schema",
+        "metadata": "$steps.get-workflow-trigger-requirements.outputs.metadata",
+        "instance_id": "$steps.trigger-workflow.outputs.instance_id",
+        "instance_url": "$steps.trigger-workflow.outputs.instance_url"
+      },
+      "failureActions": [
+        {
+          "reference": "$components.failureActions.auth_failure"
+        },
+        {
+          "reference": "$components.failureActions.permission_denied"
+        },
+        {
+          "reference": "$components.failureActions.not_found"
+        },
+        {
+          "reference": "$components.failureActions.server_error"
+        }
+      ]
+    },
+    {
+      "workflowId": "workflow-discovery-and-trigger",
+      "summary": "This workflow allows a user to discover available Maestro workflows and then trigger a specific workflow.",
+      "description": "This workflow allows a user to discover available Maestro workflows and then trigger a specific workflow.",
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "workflowId": {
+            "type": "string"
+          },
+          "instance_name": {
+            "type": "string"
+          },
+          "trigger_inputs": {
+            "type": "string"
+          }
+        }
+      },
+      "steps": [
+        {
+          "stepId": "get-workflows-list",
+          "description": "Retrieves a list of available Maestro workflows.",
+          "operationId": "GetWorkflowsList",
+          "successCriteria": [
+            {
+              "condition": "$statusCode == 200"
+            }
+          ],
+          "outputs": {
+            "data": "$response.body#/data"
+          }
+        },
+        {
+          "stepId": "get-workflow-trigger-requirements",
+          "description": "Retrieves the trigger requirements for a specific workflow, including the input schema.",
+          "operationId": "GetWorkflowTriggerRequirements",
+          "parameters": [
+            {
+              "name": "workflowId",
+              "in": "path",
+              "value": "$inputs.workflowId"
+            }
+          ],
+          "successCriteria": [
+            {
+              "condition": "$statusCode == 200"
+            }
+          ],
+          "outputs": {
+            "trigger_id": "$response.body#/trigger_id",
+            "trigger_event_type": "$response.body#/trigger_event_type",
+            "trigger_http_config": "$response.body#/trigger_http_config",
+            "trigger_input_schema": "$response.body#/trigger_input_schema",
+            "metadata": "$response.body#/metadata"
+          }
+        },
+        {
+          "stepId": "trigger-workflow",
+          "description": "Triggers a new instance of the specified workflow using the retrieved trigger requirements and provided input data.",
+          "operationId": "TriggerWorkflow",
+          "parameters": [
+            {
+              "name": "workflowId",
+              "in": "path",
+              "value": "$inputs.workflowId"
+            }
+          ],
+          "requestBody": {
+            "contentType": "application/json",
+            "payload": {
+              "instance_name": "$inputs.instance_name",
+              "trigger_inputs": "$inputs.trigger_inputs"
+            }
+          },
+          "successCriteria": [
+            {
+              "condition": "$statusCode == 200"
+            }
+          ],
+          "outputs": {
+            "instance_id": "$response.body#/instance_id",
+            "instance_url": "$response.body#/instance_url"
+          }
+        }
+      ],
+      "outputs": {
+        "data": "$steps.get-workflows-list.outputs.data",
+        "trigger_id": "$steps.get-workflow-trigger-requirements.outputs.trigger_id",
+        "trigger_event_type": "$steps.get-workflow-trigger-requirements.outputs.trigger_event_type",
+        "trigger_http_config": "$steps.get-workflow-trigger-requirements.outputs.trigger_http_config",
+        "trigger_input_schema": "$steps.get-workflow-trigger-requirements.outputs.trigger_input_schema",
+        "metadata": "$steps.get-workflow-trigger-requirements.outputs.metadata",
+        "instance_id": "$steps.trigger-workflow.outputs.instance_id",
+        "instance_url": "$steps.trigger-workflow.outputs.instance_url"
+      },
+      "failureActions": [
+        {
+          "reference": "$components.failureActions.auth_failure"
+        },
+        {
+          "reference": "$components.failureActions.permission_denied"
+        },
+        {
+          "reference": "$components.failureActions.not_found"
+        },
+        {
+          "reference": "$components.failureActions.server_error"
+        }
+      ]
+    }
+  ],
+  "components": {
+    "successActions": {
+      "default_success": {
+        "name": "default_success",
+        "type": "end"
+      }
+    },
+    "failureActions": {
+      "auth_failure": {
+        "name": "auth_failure",
+        "type": "end",
+        "criteria": [
+          {
+            "condition": "$statusCode == 401"
+          }
+        ]
+      },
+      "permission_denied": {
+        "name": "permission_denied",
+        "type": "end",
+        "criteria": [
+          {
+            "condition": "$statusCode == 403"
+          }
+        ]
+      },
+      "not_found": {
+        "name": "not_found",
+        "type": "end",
+        "criteria": [
+          {
+            "condition": "$statusCode == 404"
+          }
+        ]
+      },
+      "server_error": {
+        "name": "server_error",
+        "type": "retry",
+        "retryAfter": 2,
+        "retryLimit": 3,
+        "criteria": [
+          {
+            "condition": "$statusCode >= 500"
+          }
+        ]
+      },
+      "default_retry": {
+        "name": "default_retry",
+        "type": "retry",
+        "retryAfter": 1,
+        "retryLimit": 3
+      },
+      "default_failure": {
+        "name": "default_failure",
+        "type": "end"
+      }
+    }
+  }
+}
