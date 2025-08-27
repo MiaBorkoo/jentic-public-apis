@@ -1,0 +1,10 @@
+{
+  "oak_meta": "1.0.0",
+  "api_info": {
+    "id": "39c67fa82c1943dd078ed7f11e966028",
+    "format": "openapi",
+    "vendor": "docusign.com",
+    "api_name": "main",
+    "friendly_id": "docusign.com"
+  }
+}
